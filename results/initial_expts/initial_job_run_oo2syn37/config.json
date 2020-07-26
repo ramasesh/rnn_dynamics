@@ -1,0 +1,30 @@
+{
+  "model": {
+    "cell_type": "GRU",
+    "emb_size": 128,
+    "num_units": 256
+  },
+  "data": {
+    "batch_size": 64,
+    "max_pad": 1500
+  },
+  "optim": {
+    "base_lr": 0.001,
+    "lr_decay_steps": 1000.0,
+    "lr_decay_rate": 0.2,
+    "num_epochs": 10
+  },
+  "run": {
+    "seed": 1234
+  },
+  "save": {
+    "save_location": "gs://ramasesh-bucket-1/rnn_dynamics_multiclass/initial_expts/",
+    "job_name_template": "initial_job",
+    "job_name": "initial_job_run_oo2syn37"
+  },
+  "env_info": {
+    "jax_version": "0.1.73",
+    "tfds_version": "3.2.1",
+    "tensorflow_version": "2.2.0"
+  }
+}

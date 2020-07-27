@@ -1,9 +1,11 @@
 """Data utilities."""
 
+import tensorflow as tf
 import tensorflow_datasets as tfds
+import csv
+from src import data_utils
 
-def imdb(sequence_length, batch_size, config='subwords8k',
-         bufsize=1024, shuffle_seed=0):
+def imdb(sequence_length, batch_size):
   """Loads the IMDB sentiment dataset.
 
   Args:
@@ -12,7 +14,6 @@ def imdb(sequence_length, batch_size, config='subwords8k',
       truncated to this length (enforces fixed length sequences).
       TODO is sequence_length in units of words, subword tokens, what?
     batch_size: int, Number of examples to group in a minibatch.
-    config: str, Specifies which configuration to load (Default: subwords8k).
     bufsize: int, Size of the shuffle bufer (Default: 1024).
     shuffle_seed: int, Random seed for hte shuffle operation (Default: 0).
 
@@ -22,44 +23,66 @@ def imdb(sequence_length, batch_size, config='subwords8k',
     train_dset: a TensorFlow Dataset for training.
     test_dset: a TensorFlow Dataset for testing.
   """
+  config='subwords8k'
   dset_name = f'imdb_reviews/{config}'
-
-  import os
-  print("Contents of data")
-  print(os.listdir('./data'))
 
   # Load raw datasets.
   datasets, info = tfds.load(dset_name, with_info=True, download=False, data_dir='./data/')
   encoder = info.features['text'].encoder
 
-  def pipeline(dset):
-    """Data preprocessing pipeline."""
+  train_dset = pipeline(datasets['train'], sequence_length, batch_size)
+  test_dset = pipeline(datasets['test'], sequence_length, batch_size)
 
-    # Truncates examples longer than the sequence length.
-    dset = dset.filter(lambda d: len(d['text']) <= sequence_length)
+  return encoder, train_dset, test_dset
 
-    def _extract(d):
-      return {
-          'inputs': d['text'],
-          'labels': d['label'],
-          'index': len(d['text'])
-      }
-    dset = dset.map(_extract)
+def yelp(sequence_length, batch_size):
 
-    # Cache, shuffle, and pad.
-    dset = dset.cache().shuffle(buffer_size=bufsize, seed=shuffle_seed)
+  vocab_filename = './data/vocab/yelp'
+  encoder = data_utils.get_encoder(vocab_filename)
 
-    # Pad
-    padded_shapes = {
-        'inputs': (sequence_length,),
-        'labels': (),
-        'index': (),
+  dset_types = ['train', 'test']
+
+  filenames = {'test': './data/yelp/test.csv',
+               'train': './data/yelp/train.csv'}
+
+  def train_iterator():
+    return data_utils.readfile(encoder, filenames['train'])
+  def test_iterator():
+    return data_utils.readfile(encoder, filenames['test'])
+
+  output_types = {'text': tf.int64, 'label': tf.int64}
+
+  datasets = {'train': tf.data.Dataset.from_generator(train_iterator, output_types),
+              'test': tf.data.Dataset.from_generator(test_iterator, output_types)}
+
+  train_dset = pipeline(datasets['train'], sequence_length, batch_size)
+  test_dset = pipeline(datasets['test'], sequence_length, batch_size)
+
+  return encoder, train_dset, test_dset
+
+def pipeline(dset, sequence_length, batch_size, bufsize=1024, shuffle_seed=0):
+  """Data preprocessing pipeline."""
+
+  # Truncates examples longer than the sequence length.
+  dset = dset.filter(lambda d: len(d['text']) <= sequence_length)
+
+  def _extract(d):
+    return {
+        'inputs': d['text'],
+        'labels': d['label'],
+        'index': len(d['text'])
     }
-    dset = dset.padded_batch(batch_size, padded_shapes)
+  dset = dset.map(_extract)
 
-    return dset
+  # Cache, shuffle, and pad.
+  dset = dset.cache().shuffle(buffer_size=bufsize, seed=shuffle_seed)
 
-  train_dset = pipeline(datasets['train'])
-  test_dset = pipeline(datasets['test'])
+  # Pad
+  padded_shapes = {
+      'inputs': (sequence_length,),
+      'labels': (),
+      'index': (),
+  }
+  dset = dset.padded_batch(batch_size, padded_shapes)
 
-  return encoder, info, train_dset, test_dset
+  return dset

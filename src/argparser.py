@@ -17,16 +17,19 @@ from collections import OrderedDict
 flags.DEFINE_enum('cell_type', 'VanillaRNN', ['VanillaRNN', 'GRU', 'LSTM', 'UGRNN'], 'RNN Cell Type')
 flags.DEFINE_integer('emb_size', 128, 'Token embedding dimension')
 flags.DEFINE_integer('num_units', 256, 'Hidden state dimension')
+flags.DEFINE_integer('num_classes', 1, 'Number of classes')
 
 # data config
 flags.DEFINE_integer('batch_size', 64, 'Optimization batch size')
 flags.DEFINE_integer('max_pad', 1500, 'Max sequence length')
+flags.DEFINE_enum('dataset', 'imdb', ['imdb', 'yelp'], 'dataset')
 
 # optim config
 flags.DEFINE_float('base_lr', 1e-3, 'Initial learning rate')
 flags.DEFINE_float('lr_decay_steps', 1000., 'LR Decay steps')
 flags.DEFINE_float('lr_decay_rate', 0.2, 'LR Decay rate')
 flags.DEFINE_integer('num_epochs', 5, 'Number of epochs to train for')
+flags.DEFINE_float('gradient_clip', None, 'Norm of gradient clip')
 
 # run config
 flags.DEFINE_integer('seed', 0, 'Random seed for JAX rngs')
@@ -34,14 +37,16 @@ flags.DEFINE_integer('seed', 0, 'Random seed for JAX rngs')
 # save config
 flags.DEFINE_string('save_location', '.', 'Save location')
 flags.DEFINE_string('job_name_template', 'dynamics', 'Job name template')
+flags.DEFINE_integer('measure_every', 1000, 'Number of steps between measurements')
+
 
 FLAGS = flags.FLAGS
 
-ARGS_BY_TYPE = {'model': ['cell_type', 'emb_size', 'num_units'],
-                'data': ['batch_size', 'max_pad'],
-                'optim': ['base_lr', 'lr_decay_steps', 'lr_decay_rate', 'num_epochs'],
+ARGS_BY_TYPE = {'model': ['cell_type', 'emb_size', 'num_units', 'num_classes'],
+                'data': ['dataset', 'batch_size', 'max_pad'],
+                'optim': ['base_lr', 'lr_decay_steps', 'lr_decay_rate', 'num_epochs', 'gradient_clip'],
                 'run': ['seed'],
-                'save': ['save_location', 'job_name_template']}
+                'save': ['save_location', 'job_name_template', 'measure_every']}
 
 
 def parse_args():

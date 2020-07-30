@@ -2,7 +2,7 @@
     "cell_type": "LSTM",
     "emb_size": 128,
     "num_units": 256,
-    "batch_size": 64,
+    "batch_size": 256,
     "max_pad": 1500,
     "base_lr": 0.01,
     "lr_decay_steps": 1000,

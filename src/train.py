@@ -17,41 +17,9 @@ import tensorflow_datasets as tfds
 
 from renn.rnn import cells, unroll, network
 from renn import utils
-from src import data, reporters, argparser
+from src import data, reporters, argparser, model_utils, optim_utils
 
 FLAGS = flags.FLAGS
-
-def build_optimizer_step(optimizer, initial_params, loss_fun, gradient_clip=None):
-  """Builds training step function."""
-
-  #Destructure the optimizer triple.
-  init_opt, update_opt, get_params = optimizer
-  opt_state = init_opt(initial_params)
-
-  @jax.jit
-  def optimizer_step_noclip(current_step, state, batch):
-    """Takes a single optimization step."""
-    p = get_params(state)
-    loss, gradients = jax.value_and_grad(loss_fun)(p, batch)
-
-    new_state = update_opt(current_step, gradients, state)
-    return current_step + 1, new_state, loss
-
-  @jax.jit
-  def optimizer_step_clip(current_step, state, batch):
-    """Takes a single optimization step."""
-    p = get_params(state)
-    loss, gradients = jax.value_and_grad(loss_fun)(p, batch)
-
-    gradients = optimizers.clip_grads(gradients, gradient_clip)
-
-    new_state = update_opt(current_step, gradients, state)
-    return current_step + 1, new_state, loss
-
-  if gradient_clip is None:
-    return opt_state, optimizer_step_noclip
-  else:
-    return opt_state, optimizer_step_clip
 
 def get_cell(cell_type, **kwargs):
   """ Builds a cell given the type and passes along any kwargs """
@@ -87,13 +55,7 @@ def main(_):
   prng_key = random.PRNGKey(config['run']['seed'])
 
   # Load data.
-  if config['data']['dataset'] == 'imdb':
-    encoder, train_dset, test_dset = data.imdb(config['data']['max_pad'],
-                                               config['data']['batch_size'])
-  elif config['data']['dataset'] == 'yelp':
-    encoder, train_dset, test_dset = data.yelp(config['data']['max_pad'],
-                                               config['data']['batch_size'])
-
+  encoder, train_dset, test_dset = data.get_dataset(config['data'])
   batch = next(tfds.as_numpy(train_dset))
 
   # Build network.
@@ -103,49 +65,42 @@ def main(_):
   init_fun, apply_fun, emb_apply, readout_apply = network.build_rnn(encoder.vocab_size,
                                                                     config['model']['emb_size'],
                                                                     cell,
-                                                                    num_outputs=config['model']['num_classes'])
+                                                                    num_outputs=config['model']['num_outputs'])
 
-  loss_fun = utils.make_loss_function(apply_fun, loss_type = 'xent',
-                                      num_outputs=config['model']['num_classes'])
-  acc_fun = utils.make_acc_fun(apply_fun,
-                               num_outputs = config['model']['num_classes'])
+  loss_fun, acc_fun = optim_utils.loss_and_accuracy(apply_fun,
+                                                    config['model'],
+                                                    config['optim'])
+
 
   _, initial_params = init_fun(prng_key, batch['inputs'].shape)
+  initial_params = model_utils.initialize(initial_params, config['model'])
 
   logging.info('Initial loss: %0.5f', loss_fun(initial_params, batch))
 
-  # Build training step function.
-  learning_rate = optimizers.exponential_decay(config['optim']['base_lr'],
-                                               config['optim']['lr_decay_steps'],
-                                               config['optim']['lr_decay_rate'])
-  opt = optimizers.adam(learning_rate)
-  get_params = opt[2]
-  opt_state, step_fun = build_optimizer_step(opt, initial_params,
-                                             loss_fun,
-                                             gradient_clip=config['optim']['gradient_clip'])
-  global_step = 0
+  # get optimizer
+  opt, get_params, opt_state, step_fun = optim_utils.optimization_suite(initial_params,
+                                                                        loss_fun,
+                                                                        config['optim'])
 
   # Set up measurement
   def should_report_train(step_num):
     return step_num % config['save']['measure_every'] == 0
   def should_report_test(step_num):
-    return step_num % (100*config['save']['measure_every']) == 0
+    return step_num % (10 * config['save']['measure_every']) == 0
 
   # Train
+  global_step = 0
   for epoch in range(config['optim']['num_epochs']):
-
     # Train for one epoch.
-    batch_num = 0
-    for batch in tfds.as_numpy(train_dset):
+    for batch_num, batch in enumerate(tfds.as_numpy(train_dset)):
       global_step, opt_state, loss = step_fun(global_step, opt_state, batch)
-      batch_num = batch_num + 1
 
       if should_report_train(global_step):
         params = get_params(opt_state)
 
         # Train accuracy
         accuracy = acc_fun(params, batch)
-        logging.info(f'Step {global_step} loss {loss} accuracy {accuracy} (TRAIN)')
+        # logging.info(f'Step {global_step} loss {loss} accuracy {accuracy} (TRAIN)')
         reporter['train'].report_all(global_step, {'loss': loss, 'acc': accuracy})
 
       if should_report_test(global_step):
@@ -157,6 +112,14 @@ def main(_):
         step_test_acc = np.mean(is_correct)
         reporter['test'].report_all(global_step, {'acc': step_test_acc})
         logging.info(f'Step {global_step} accuracy {step_test_acc} (TEST)')
+
+  is_correct = []
+  params = get_params(opt_state)
+  for batch in tfds.as_numpy(test_dset):
+    is_correct += [acc_fun(params, batch)]
+  step_test_acc = np.mean(is_correct)
+  reporter['test'].report_all(global_step, {'acc': step_test_acc})
+  logging.info(f'Step {global_step} accuracy {step_test_acc} (TEST)')
 
   final_params = {'params': params}
   reporters.save_dict(config, final_params, 'final_params')

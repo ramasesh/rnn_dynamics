@@ -6,6 +6,7 @@ import uv.util as u
 import uv.reporter as r
 import pickle
 
+
 def gcloud_reporter(prefix: str, job_name: str):
   """Returns a reporter which persists metrics in GCloud in jsonl format.
   """

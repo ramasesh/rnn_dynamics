@@ -9,7 +9,6 @@ import json
 import jax
 from jax import random
 from jax.experimental import optimizers
-from jax.experimental import stax
 import jax.numpy as jnp
 
 import numpy as np
@@ -28,7 +27,6 @@ def main(_):
   config = argparser.parse_args()
   logging.info(json.dumps(config, indent=2))
   reporters.save_config(config)
-
 
   prng_key = random.PRNGKey(config['run']['seed'])
 
@@ -60,7 +58,7 @@ def main(_):
                                                                         loss_fun,
                                                                         config['optim'])
 
-  ## Multimeter setup
+  ## Scope setup
   # Reporter setup
   data_store = {}
   reporter = reporters.build_reporters(config['save'],

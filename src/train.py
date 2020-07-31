@@ -63,7 +63,7 @@ def main(_):
   data_store = {}
   reporter = reporters.build_reporters(config['save'],
                                        data_store)
-  # Static state for Multimeter
+  # Static state for scope
   static_state = {'acc_fun': acc_fun,
                   'loss_fun': loss_fun,
                   'param_extractor': get_params,

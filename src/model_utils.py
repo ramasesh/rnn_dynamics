@@ -2,6 +2,8 @@ import jax
 import jax.numpy
 import pickle
 
+from renn.rnn import cells
+
 def load_params(filename):
   """ loads a dictionarhy {'params': params} """
   with open(filename, 'rb') as f:
@@ -20,3 +22,18 @@ def initialize(initial_params, model_config):
     preloaded_params = load_params(model_config['pretrained'])
     initial_params = combine(initial_params, preloaded_params)
   return initial_params
+
+def get_cell(cell_type, **kwargs):
+  """ Builds a cell given the type and passes along any kwargs """
+
+  cell_functions = {'LSTM': cells.LSTM,
+                    'GRU':  cells.GRU,
+                    'VanillaRNN': cells.VanillaRNN,
+                    'UGRNN': cells.UGRNN
+                    }
+
+  if cell_type not in cell_functions.keys():
+    raise Exception(f'Input argument cell_type must be in {cell_functions.keys()}')
+
+  return cell_functions[cell_type](**kwargs)
+

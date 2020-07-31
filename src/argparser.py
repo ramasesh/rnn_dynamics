@@ -39,8 +39,9 @@ flags.DEFINE_integer('seed', 0, 'Random seed for JAX rngs')
 # save config
 flags.DEFINE_string('save_location', '.', 'Save location')
 flags.DEFINE_string('job_name_template', 'dynamics', 'Job name template')
-flags.DEFINE_integer('measure_every', 1000, 'Number of steps between measurements')
-
+flags.DEFINE_integer('measure_train', 1000, 'Number of steps between measurements')
+flags.DEFINE_integer('measure_test', 1000, 'Number of steps between test measurements.')
+flags.DEFINE_integer('checkpoint_interval', 1000, 'Number of steps between checkpointng')
 
 FLAGS = flags.FLAGS
 
@@ -49,7 +50,8 @@ ARGS_BY_TYPE = {'model': ['cell_type', 'emb_size', 'num_units', 'pretrained'],
                 'optim': ['base_lr', 'lr_decay_steps', 'lr_decay_rate',
                           'num_epochs', 'gradient_clip', 'L2'],
                 'run': ['seed'],
-                'save': ['save_location', 'job_name_template', 'measure_every']}
+                'save': ['save_location', 'job_name_template', 'measure_train',
+                         'measure_test', 'checkpoint_interval']}
 
 
 def parse_args():

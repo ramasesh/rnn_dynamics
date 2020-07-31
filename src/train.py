@@ -15,25 +15,11 @@ import jax.numpy as jnp
 import numpy as np
 import tensorflow_datasets as tfds
 
-from renn.rnn import cells, unroll, network
+from renn.rnn import unroll, network
 from renn import utils
-from src import data, reporters, argparser, model_utils, optim_utils
+from src import data, reporters, argparser, model_utils, optim_utils, measurements, manager
 
 FLAGS = flags.FLAGS
-
-def get_cell(cell_type, **kwargs):
-  """ Builds a cell given the type and passes along any kwargs """
-
-  cell_functions = {'LSTM': cells.LSTM,
-                    'GRU':  cells.GRU,
-                    'VanillaRNN': cells.VanillaRNN,
-                    #'UGRNN': cells.UGRNN
-                    }
-
-  if cell_type not in cell_functions.keys():
-    raise Exception(f'Input argument cell_type must be in {cell_functions.keys()}')
-
-  return cell_functions[cell_type](**kwargs)
 
 def main(_):
   """Builds and trains a sentiment classification RNN."""
@@ -43,14 +29,6 @@ def main(_):
   logging.info(json.dumps(config, indent=2))
   reporters.save_config(config)
 
-  # Set up reporters
-  data_store = {}
-  reporter = reporters.build_reporters(config['save'],
-                                       data_store)
-  prefixes = ['test', 'train']
-  reporter = reporters.prefix_reporters(reporter,
-                                        prefixes)
-
 
   prng_key = random.PRNGKey(config['run']['seed'])
 
@@ -59,8 +37,8 @@ def main(_):
   batch = next(tfds.as_numpy(train_dset))
 
   # Build network.
-  cell = get_cell(config['model']['cell_type'],
-                  num_units=config['model']['num_units'])
+  cell = model_utils.get_cell(config['model']['cell_type'],
+                              num_units=config['model']['num_units'])
 
   init_fun, apply_fun, emb_apply, readout_apply = network.build_rnn(encoder.vocab_size,
                                                                     config['model']['emb_size'],
@@ -82,46 +60,54 @@ def main(_):
                                                                         loss_fun,
                                                                         config['optim'])
 
-  # Set up measurement
-  def should_report_train(step_num):
-    return step_num % config['save']['measure_every'] == 0
-  def should_report_test(step_num):
-    return step_num % (10 * config['save']['measure_every']) == 0
+  ## Multimeter setup
+  # Reporter setup
+  data_store = {}
+  reporter = reporters.build_reporters(config['save'],
+                                       data_store)
+  # Static state for Multimeter
+  static_state = {'acc_fun': acc_fun,
+                  'loss_fun': loss_fun,
+                  'param_extractor': get_params,
+                  'test_set': test_dset}
+
+  oscilloscope = manager.MeasurementManager(static_state,
+                                          reporter)
+
+  oscilloscope.add_measurement({'name': 'test_acc',
+                                'interval': config['save']['measure_test'],
+                                'function': measurements.measure_test_acc})
+  oscilloscope.add_measurement({'name': 'train_acc',
+                                'interval': config['save']['measure_train'],
+                                'function': measurements.measure_batch_acc})
+  oscilloscope.add_measurement({'name': 'train_loss',
+                                'interval': config['save']['measure_train'],
+                                'function': measurements.measure_batch_loss})
+  oscilloscope.add_measurement({'name': 'l2_norm',
+                                'interval': config['save']['measure_test'],
+                                'function': measurements.measure_l2_norm})
 
   # Train
   global_step = 0
+
   for epoch in range(config['optim']['num_epochs']):
-    # Train for one epoch.
+
     for batch_num, batch in enumerate(tfds.as_numpy(train_dset)):
       global_step, opt_state, loss = step_fun(global_step, opt_state, batch)
 
-      if should_report_train(global_step):
+      dynamic_state = {'opt_state': opt_state,
+                       'batch_train_loss': loss,
+                       'batch': batch}
+
+      oscilloscope.process(global_step, dynamic_state)
+      if global_step % config['save']['checkpoint_interval'] == 0:
         params = get_params(opt_state)
+        np_params = np.asarray(params, dtype=object)
+        reporters.save_dict(config, np_params, f'checkpoint_{global_step}')
 
-        # Train accuracy
-        accuracy = acc_fun(params, batch)
-        # logging.info(f'Step {global_step} loss {loss} accuracy {accuracy} (TRAIN)')
-        reporter['train'].report_all(global_step, {'loss': loss, 'acc': accuracy})
+  oscilloscope.trigger_subset(global_step, dynamic_state, ['test_acc'])
 
-      if should_report_test(global_step):
-        # Test metrics
-        is_correct = []
-        params = get_params(opt_state)
-        for batch in tfds.as_numpy(test_dset):
-          is_correct += [acc_fun(params, batch)]
-        step_test_acc = np.mean(is_correct)
-        reporter['test'].report_all(global_step, {'acc': step_test_acc})
-        logging.info(f'Step {global_step} accuracy {step_test_acc} (TEST)')
-
-  is_correct = []
-  params = get_params(opt_state)
-  for batch in tfds.as_numpy(test_dset):
-    is_correct += [acc_fun(params, batch)]
-  step_test_acc = np.mean(is_correct)
-  reporter['test'].report_all(global_step, {'acc': step_test_acc})
-  logging.info(f'Step {global_step} accuracy {step_test_acc} (TEST)')
-
-  final_params = {'params': params}
+  final_params = {'params': np.asarray(get_params(opt_state), dtype=object)}
   reporters.save_dict(config, final_params, 'final_params')
 
 if __name__  == '__main__':

@@ -4,7 +4,7 @@ jax
 tensorflow_datasets==3.2.1
 tensorflow
 tqdm
---editable git+https://github.com/google-research/reverse-engineering-neural-networks.git@loss_functions#egg=renn
+--editable git+https://github.com/google-research/reverse-engineering-neural-networks.git@master#egg=renn
 --extra-index-ur lhttps://artifactory2.nestlabs.com/artifactory/api/pypi/pypi-local/simple
 blueshift-uv==0.3.0
 

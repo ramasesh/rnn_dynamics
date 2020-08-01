@@ -5,6 +5,23 @@ import tensorflow_datasets as tfds
 import csv
 from src import data_utils
 
+# Mapping from 5-class categories to subclasses
+CLASS_MAPPINGS = {1: {4:1, 5:1, 1:0, 2:0},
+                  2: {4:1, 5:1, 1:0, 2:0},
+                  3: {1: 0, 3: 1, 5: 2},
+                  5: {1: 0, 2: 1, 3: 2, 4: 3, 5: 4}}
+
+def get_dataset(data_config):
+  if data_config['dataset'] == 'imdb':
+    encoder, train_dset, test_dset = imdb(data_config['max_pad'],
+                                          data_config['batch_size'])
+  elif data_config['dataset'] == 'yelp':
+    encoder, train_dset, test_dset = yelp(data_config['max_pad'],
+                                          data_config['batch_size'],
+                                          data_config['num_classes'])
+
+  return encoder, train_dset, test_dset
+
 def imdb(sequence_length, batch_size):
   """Loads the IMDB sentiment dataset.
 
@@ -12,14 +29,10 @@ def imdb(sequence_length, batch_size):
     sequence_length: int, Sequence length for each example.  All examples will
       be padded to this length, and examples longer than this length will get
       truncated to this length (enforces fixed length sequences).
-      TODO is sequence_length in units of words, subword tokens, what?
     batch_size: int, Number of examples to group in a minibatch.
-    bufsize: int, Size of the shuffle bufer (Default: 1024).
-    shuffle_seed: int, Random seed for hte shuffle operation (Default: 0).
 
   Returns:
     encoder: a TensorFlow Datasets Text Encoder object.
-    info: a TensorFlow Datasets info object.
     train_dset: a TensorFlow Dataset for training.
     test_dset: a TensorFlow Dataset for testing.
   """
@@ -59,34 +72,23 @@ def yelp(sequence_length, batch_size, num_classes=5):
                     all classes are given with their proper labels
   """
 
-  class_mappings = {1: {4:1, 5:1, 1:0, 2:0},
-                    2: {4:1, 5:1, 1:0, 2:0}, # NOTE 1 and 2 are same
-                    3: {1: 0, 3: 1, 5: 2},
-                    5: {1: 0, 2: 1, 3: 2, 4: 3, 5: 4}}
+  star_to_label = CLASS_MAPPINGS[num_classes]
 
   vocab_filename = './data/vocab/yelp'
   encoder = data_utils.get_encoder(vocab_filename)
 
   dset_types = ['train', 'test']
+  output_types = {'text': tf.int64,
+                  'label': tf.int64}
 
-  filenames = {'test': './data/yelp/test.csv',
-               'train': './data/yelp/train.csv'}
+  datasets = {}
+  for dset_type in dset_types:
+    filename = f'./data/yelp/{dset_type}.csv'
+    iterator = lambda : data_utils.readfile(encoder, filename, star_to_label)
+    dataset = tf.data.Dataset.from_generator(iterator, output_types)
+    datasets[dset_type] = pipeline(dataset, sequence_length, batch_size)
 
-  def train_iterator():
-    return data_utils.readfile(encoder, filenames['train'], class_mappings[num_classes])
-  def test_iterator():
-    return data_utils.readfile(encoder, filenames['test'], class_mappings[num_classes])
-
-  output_types = {'text': tf.int64, 'label': tf.int64}
-
-  datasets = {'train': tf.data.Dataset.from_generator(train_iterator, output_types),
-              'test': tf.data.Dataset.from_generator(test_iterator, output_types)}
-
-  train_dset = pipeline(datasets['train'], sequence_length, batch_size)
-  test_dset = pipeline(datasets['test'], sequence_length, batch_size)
-
-  return encoder, train_dset, test_dset
-
+  return encoder, datasets['train'], datasets['test']
 
 def pipeline(dset, sequence_length, batch_size, bufsize=1024, shuffle_seed=0):
   """Data preprocessing pipeline."""
@@ -115,13 +117,3 @@ def pipeline(dset, sequence_length, batch_size, bufsize=1024, shuffle_seed=0):
 
   return dset
 
-def get_dataset(data_config):
-  if data_config['dataset'] == 'imdb':
-    encoder, train_dset, test_dset = imdb(data_config['max_pad'],
-                                          data_config['batch_size'])
-  elif data_config['dataset'] == 'yelp':
-    encoder, train_dset, test_dset = yelp(data_config['max_pad'],
-                                          data_config['batch_size'],
-                                          data_config['num_classes'])
-
-  return encoder, train_dset, test_dset

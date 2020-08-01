@@ -50,31 +50,30 @@ def optimization_suite(initial_params, loss_function, optim_config):
 
   return optimizer, get_params, optimizer_state, step_function
 
-def loss_and_accuracy(network_apply_fun, model_config, optim_config):
+def loss_and_accuracy(network_fun, model_config, optim_config):
 
-  if model_config['num_outputs'] == 1:
-    basic_loss_fun = losses.binary_xent
-  else:
-    basic_loss_fun = losses.multiclass_xent
+  n_out = model_config['num_outputs']
+  bare_loss = losses.binary_xent if n_out == 1 else losses.multiclass_xent
 
-  if optim_config['L2'] == 0.0:
-    regularization_fun = lambda x: 0.0
-  else:
-    regularization_fun = l2_loss(optim_config['L2'])
+  l2_reg = l2_loss(optim_config['L2'])
 
-  loss_fun = utils.make_loss_function(network_apply_fun,
-                                      basic_loss_fun,
-                                      regularization_fun)
+  loss_fun = utils.make_loss_function(network_fun,
+                                      bare_loss,
+                                      l2_reg)
 
   acc_fun = utils.make_acc_fun(network_apply_fun,
-                               num_outputs = model_config['num_outputs'])
+                               model_config['num_outputs'])
   return loss_fun, acc_fun
 
 def l2_loss(l2_penalty):
+  """ Returns a loss function which maps parameters to
+  the l2_penalty times the l2_norm of the RNN parameters only"""
 
-  def loss(params):
-    emb_params, rnn_params, readout_params = params
-    return l2_penalty * optimizers.l2_norm(rnn_params)
+  if l2_penalty == 0.0:
+    return lambda x: 0.0
+  else:
+    def l2(params):
+      emb_params, rnn_params, readout_params = params
+      return l2_penalty * optimizers.l2_norm(rnn_params)
 
-  return loss
-
+    return l2

@@ -9,22 +9,6 @@ def get_encoder(vocab_file):
 
   return tfds.features.text.SubwordTextEncoder.load_from_file(vocab_file)
 
-#def readfile(encoder, filename):
-#  with open(filename, 'r') as f:
-#    for row in csv.reader(f):
-#      score, text = row
-#      yield {'text': encoder.encode(text),
-#             'label': int(score)-1}
-#
-#def readfile_2class(encoder, filename):
-#  with open(filename, 'r') as f:
-#    for row in csv.reader(f):
-#      score, text = row
-#      if int(score) == 3:
-#        continue
-#      yield {'text': encoder.encode(text),
-#             'label': int(int(score)>3)}
-
 def readfile(encoder, filename, star_to_label):
   """
   Star to label is a dictionary encoding how to map the

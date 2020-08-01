@@ -1,8 +1,6 @@
 import functools
 
-from absl import app
-from absl import logging
-from absl import flags
+from absl import app, logging, flags
 
 import json
 
@@ -38,10 +36,10 @@ def main(_):
   cell = model_utils.get_cell(config['model']['cell_type'],
                               num_units=config['model']['num_units'])
 
-  init_fun, apply_fun, emb_apply, readout_apply = network.build_rnn(encoder.vocab_size,
-                                                                    config['model']['emb_size'],
-                                                                    cell,
-                                                                    num_outputs=config['model']['num_outputs'])
+  init_fun, apply_fun, _, _ = network.build_rnn(encoder.vocab_size,
+                                                config['model']['emb_size'],
+                                                cell,
+                                                config['model']['num_outputs'])
 
   loss_fun, acc_fun = optim_utils.loss_and_accuracy(apply_fun,
                                                     config['model'],
@@ -87,7 +85,6 @@ def main(_):
 
   # Train
   global_step = 0
-
   for epoch in range(config['optim']['num_epochs']):
 
     for batch_num, batch in enumerate(tfds.as_numpy(train_dset)):
@@ -98,6 +95,7 @@ def main(_):
                        'batch': batch}
 
       oscilloscope.process(global_step, dynamic_state)
+
       if global_step % config['save']['checkpoint_interval'] == 0:
         params = get_params(opt_state)
         np_params = np.asarray(params, dtype=object)

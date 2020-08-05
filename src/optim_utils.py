@@ -61,7 +61,7 @@ def loss_and_accuracy(network_fun, model_config, optim_config):
                                       bare_loss,
                                       l2_reg)
 
-  acc_fun = utils.make_acc_fun(network_apply_fun,
+  acc_fun = utils.make_acc_fun(network_fun,
                                model_config['num_outputs'])
   return loss_fun, acc_fun
 

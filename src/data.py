@@ -6,10 +6,15 @@ import csv
 from src import data_utils
 
 # Mapping from 5-class categories to subclasses
-CLASS_MAPPINGS = {1: {4:1, 5:1, 1:0, 2:0},
+SENTIMENT_CLASS_MAPPINGS = {1: {4:1, 5:1, 1:0, 2:0},
                   2: {4:1, 5:1, 1:0, 2:0},
                   3: {1: 0, 3: 1, 5: 2},
                   5: {1: 0, 2: 1, 3: 2, 4: 3, 5: 4}}
+
+# Mapping from 4-class categories to subclasses
+NEWS_CLASS_MAPPINGS = {2: {1:0, 2:1},
+                       3: {1:0, 2:1, 3:2},
+                       4: {1:0, 2:1, 3:2, 4:3}}
 
 def get_dataset(data_config):
   if data_config['dataset'] == 'imdb':
@@ -19,7 +24,10 @@ def get_dataset(data_config):
     encoder, train_dset, test_dset = yelp(data_config['max_pad'],
                                           data_config['batch_size'],
                                           data_config['num_classes'])
-
+  elif data_config['dataset'] == 'ag_news':
+    encoder, train_dset, test_dset = ag_news(data_config['max_pad'],
+                                             data_config['batch_size'],
+                                             data_config['num_classes']) 
   return encoder, train_dset, test_dset
 
 def imdb(sequence_length, batch_size):
@@ -72,7 +80,7 @@ def yelp(sequence_length, batch_size, num_classes=5):
                     all classes are given with their proper labels
   """
 
-  star_to_label = CLASS_MAPPINGS[num_classes]
+  star_to_label = SENTIMENT_CLASS_MAPPINGS[num_classes]
 
   vocab_filename = './data/vocab/yelp'
   encoder = data_utils.get_encoder(vocab_filename)
@@ -85,6 +93,37 @@ def yelp(sequence_length, batch_size, num_classes=5):
   for dset_type in dset_types:
     filename = f'./data/yelp/{dset_type}.csv'
     iterator = lambda : data_utils.readfile(encoder, filename, star_to_label)
+    dataset = tf.data.Dataset.from_generator(iterator, output_types)
+    datasets[dset_type] = pipeline(dataset, sequence_length, batch_size)
+
+  return encoder, datasets['train'], datasets['test']
+
+def ag_news(sequence_length, batch_size, num_classes=4):
+  """
+  Returns the AG_NEWS dataset, with a specified number of classes.
+
+  Arguments:
+    sequence_length -
+    batch_size -
+    num_classes - the number of classes to divide up the dataset into.
+                  Allowed number of classes are {2, 3, 4}
+                  If num_classes == 2, we include classes 0 and 1
+                  If num_classes == 3, we include classes 0 1 2
+                  If num_classes == 4, we include classes 0 1 2 3 (all)
+  """
+
+  star_to_label = NEWS_CLASS_MAPPINGS[num_classes]
+  vocab_filename = './data/vocab/ag_news'
+  encoder = data_utils.get_encoder(vocab_filename)
+
+  dset_types = ['train', 'test']
+  output_types = {'text': tf.int64,
+                  'label': tf.int64}
+
+  datasets = {}
+  for dset_type in dset_types:
+    filename = f'./data/ag_news/{dset_type}.csv'
+    iterator = lambda : data_utils.readfile(encoder, filename, star_to_label, three_column=True)
     dataset = tf.data.Dataset.from_generator(iterator, output_types)
     datasets[dset_type] = pipeline(dataset, sequence_length, batch_size)
 
@@ -116,4 +155,5 @@ def pipeline(dset, sequence_length, batch_size, bufsize=1024, shuffle_seed=0):
   dset = dset.padded_batch(batch_size, padded_shapes)
 
   return dset
+
 

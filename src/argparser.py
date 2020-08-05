@@ -21,8 +21,8 @@ flags.DEFINE_string('pretrained', None, 'Filepath of pretrained model parameters
 
 # data config
 flags.DEFINE_integer('batch_size', 64, 'Optimization batch size')
-flags.DEFINE_integer('max_pad', 1500, 'Max sequence length')
-flags.DEFINE_enum('dataset', 'imdb', ['imdb', 'yelp'], 'dataset')
+flags.DEFINE_integer('max_pad', 160, 'Max sequence length')
+flags.DEFINE_enum('dataset', 'imdb', ['imdb', 'yelp', 'ag_news'], 'dataset')
 flags.DEFINE_integer('num_classes', None, 'Number of classes in the dataset')
 
 # optim config
@@ -67,8 +67,8 @@ def parse_args():
   return config
 
 def populate_classes_and_outputs(config):
-  class_options = {'imdb': [2], 'yelp': [2,3,5]}
-  class_defaults = {'imdb': 2, 'yelp': 5}
+  class_options = {'imdb': [2], 'yelp': [2,3,5], 'ag_news': [2, 3, 4]}
+  class_defaults = {'imdb': 2, 'yelp': 5, 'ag_news': 4}
 
   dataset = config['data']['dataset']
 

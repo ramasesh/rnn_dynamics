@@ -43,7 +43,7 @@ def measure_test_acc(state):
     batch_avg = acc_fun(params, batch).item()
     test_acc.update(batch_avg, len(batch['inputs']))
 
-  return test_acc.val
+  return test_acc.avg
 
 def measure_l2_norm(state):
   """Measures the l2 norm (NOT squared l2 norm!) of the

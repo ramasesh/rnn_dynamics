@@ -89,14 +89,19 @@ def yelp(sequence_length, batch_size, num_classes=5):
   output_types = {'text': tf.int64,
                   'label': tf.int64}
 
-  datasets = {}
-  for dset_type in dset_types:
-    filename = f'./data/yelp/{dset_type}.csv'
-    iterator = lambda : data_utils.readfile(encoder, filename, star_to_label)
-    dataset = tf.data.Dataset.from_generator(iterator, output_types)
-    datasets[dset_type] = pipeline(dataset, sequence_length, batch_size)
+  train_filename = './data/yelp/train.csv'
+  train_iterator = lambda : data_utils.readfile(encoder, train_filename,
+                                          star_to_label, three_column=False)
+  train_dataset = tf.data.Dataset.from_generator(train_iterator, output_types)
+  pipelined_train = pipeline(train_dataset, sequence_length, batch_size)
 
-  return encoder, datasets['train'], datasets['test']
+  test_filename = './data/yelp/test.csv'
+  test_iterator = lambda : data_utils.readfile(encoder, test_filename,
+                                          star_to_label, three_column=False)
+  test_dataset = tf.data.Dataset.from_generator(test_iterator, output_types)
+  pipelined_test = pipeline(test_dataset, sequence_length, batch_size)
+
+  return encoder, pipelined_train, pipelined_test
 
 def ag_news(sequence_length, batch_size, num_classes=4):
   """
@@ -120,14 +125,19 @@ def ag_news(sequence_length, batch_size, num_classes=4):
   output_types = {'text': tf.int64,
                   'label': tf.int64}
 
-  datasets = {}
-  for dset_type in dset_types:
-    filename = f'./data/ag_news/{dset_type}.csv'
-    iterator = lambda : data_utils.readfile(encoder, filename, star_to_label, three_column=True)
-    dataset = tf.data.Dataset.from_generator(iterator, output_types)
-    datasets[dset_type] = pipeline(dataset, sequence_length, batch_size)
+  train_filename = './data/ag_news/train.csv'
+  train_iterator = lambda : data_utils.readfile(encoder, train_filename,
+                                          star_to_label, three_column=True)
+  train_dataset = tf.data.Dataset.from_generator(train_iterator, output_types)
+  pipelined_train = pipeline(train_dataset, sequence_length, batch_size)
 
-  return encoder, datasets['train'], datasets['test']
+  test_filename = './data/ag_news/test.csv'
+  test_iterator = lambda : data_utils.readfile(encoder, test_filename,
+                                          star_to_label, three_column=True)
+  test_dataset = tf.data.Dataset.from_generator(test_iterator, output_types)
+  pipelined_test = pipeline(test_dataset, sequence_length, batch_size)
+
+  return encoder, pipelined_train, pipelined_test
 
 def pipeline(dset, sequence_length, batch_size, bufsize=1024, shuffle_seed=0):
   """Data preprocessing pipeline."""

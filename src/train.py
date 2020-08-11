@@ -22,6 +22,9 @@ FLAGS = flags.FLAGS
 def main(_):
   """Builds and trains a sentiment classification RNN."""
 
+  # prevent tf from accessing GPU
+  tf.config.experimental.set_visible_devices([], "GPU")
+
   # Get and save config
   config = argparser.parse_args()
   logging.info(json.dumps(config, indent=2))
@@ -31,7 +34,6 @@ def main(_):
 
   # Load data.
   encoder, train_dset, test_dset = data.get_dataset(config['data'])
-  batch = next(tfds.as_numpy(train_dset))
 
   # Build network.
   cell = model_utils.get_cell(config['model']['cell_type'],
@@ -46,11 +48,10 @@ def main(_):
                                                     config['model'],
                                                     config['optim'])
 
+  _, initial_params = init_fun(prng_key, (config['data']['batch_size'],
+                                          config['data']['max_pad']))
 
-  _, initial_params = init_fun(prng_key, batch['inputs'].shape)
   initial_params = model_utils.initialize(initial_params, config['model'])
-
-  logging.info('Initial loss: %0.5f', loss_fun(initial_params, batch))
 
   # get optimizer
   opt, get_params, opt_state, step_fun = optim_utils.optimization_suite(initial_params,
@@ -83,19 +84,19 @@ def main(_):
   oscilloscope.add_measurement({'name': 'l2_norm',
                                 'interval': config['save']['measure_test'],
                                 'function': measurements.measure_l2_norm})
-
   # Train
   global_step = 0
+  loss = np.nan
   for epoch in range(config['optim']['num_epochs']):
 
     for batch_num, batch in enumerate(tfds.as_numpy(train_dset)):
-      global_step, opt_state, loss = step_fun(global_step, opt_state, batch)
-
       dynamic_state = {'opt_state': opt_state,
                        'batch_train_loss': loss,
                        'batch': batch}
 
       oscilloscope.process(global_step, dynamic_state)
+
+      global_step, opt_state, loss = step_fun(global_step, opt_state, batch)
 
       if global_step % config['save']['checkpoint_interval'] == 0:
         params = get_params(opt_state)

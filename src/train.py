@@ -33,13 +33,13 @@ def main(_):
   prng_key = random.PRNGKey(config['run']['seed'])
 
   # Load data.
-  encoder, train_dset, test_dset = data.get_dataset(config['data'])
+  vocab_size, train_dset, test_dset = data.get_dataset(config['data'])
 
   # Build network.
   cell = model_utils.get_cell(config['model']['cell_type'],
                               num_units=config['model']['num_units'])
 
-  init_fun, apply_fun, _, _ = network.build_rnn(encoder.vocab_size,
+  init_fun, apply_fun, _, _ = network.build_rnn(vocab_size,
                                                 config['model']['emb_size'],
                                                 cell,
                                                 config['model']['num_outputs'])

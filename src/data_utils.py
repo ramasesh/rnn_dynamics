@@ -2,13 +2,6 @@ import os
 import tensorflow_datasets as tfds
 import csv
 
-def get_encoder(vocab_file):
-  """Given the location of a text_file which contins the words
-  comprising a vocabulary, returns an encoder which maps
-  text corpora to a list of indices in the vocab"""
-
-  return tfds.features.text.SubwordTextEncoder.load_from_file(vocab_file)
-
 def readfile(encoder, filename, star_to_label, three_column=False):
   """
   Star to label is a dictionary encoding how to map the

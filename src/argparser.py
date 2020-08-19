@@ -34,6 +34,7 @@ flags.DEFINE_float('base_lr', 1e-3, 'Initial learning rate')
 flags.DEFINE_float('lr_decay_steps', 1000., 'LR Decay steps')
 flags.DEFINE_float('lr_decay_rate', 0.2, 'LR Decay rate')
 flags.DEFINE_integer('num_epochs', 5, 'Number of epochs to train for')
+flags.DEFINE_integer('steps', 10000, 'Number of steps to train for')
 flags.DEFINE_float('gradient_clip', None, 'Norm of gradient clip')
 flags.DEFINE_float('L2', 0.0, 'Coefficient of L2')
 
@@ -50,24 +51,41 @@ flags.DEFINE_integer('checkpoint_interval', 1000, 'Number of steps between check
 FLAGS = flags.FLAGS
 
 ARGS_BY_TYPE = {'model': ['cell_type', 'emb_size', 'num_units', 'pretrained'],
-                'data': ['dataset', 'batch_size', 'max_pad', 'num_classes',
-                         'length_sampler', 'length_min', 'length_max', 'length_val'],
+                'data': ['dataset', 'batch_size', 'max_pad', 'num_classes'],
                 'optim': ['base_lr', 'lr_decay_steps', 'lr_decay_rate',
                           'num_epochs', 'gradient_clip', 'L2'],
                 'run': ['seed'],
                 'save': ['save_location', 'job_name_template', 'measure_train',
                          'measure_test', 'checkpoint_interval']}
 
+TOY_ARGS_BY_TYPE = {'model': ['cell_type', 'emb_size', 'num_units', 'pretrained'],
+                'data': ['dataset', 'batch_size', 'num_classes',
+                         'length_sampler', 'length_min', 'length_max', 'length_val'],
+                'optim': ['base_lr', 'lr_decay_steps', 'lr_decay_rate',
+                          'steps', 'gradient_clip', 'L2'],
+                'run': ['seed'],
+                'save': ['save_location', 'job_name_template', 'measure_train',
+                         'measure_test', 'checkpoint_interval']}
 
-def parse_args():
+
+def parse_args(train_type='main'):
+
+  if train_type == 'main':
+    args_by_type = ARGS_BY_TYPE
+  elif train_type == 'toy':
+    args_by_type = TOY_ARGS_BY_TYPE
+    print("Toy config")
+
   config = {}
 
-  for config_type in ARGS_BY_TYPE.keys():
-    config[f'{config_type}'] = get_config(config_type)
+  for config_type in args_by_type.keys():
+    config[f'{config_type}'] = get_config(config_type, args_by_type)
   config['env_info'] = _get_env_info()
 
-  config = populate_save_location(config)
+  print(config)
+
   config = populate_classes_and_outputs(config)
+  config = populate_save_location(config)
 
   return config
 
@@ -97,17 +115,18 @@ def populate_classes_and_outputs(config):
   if dataset == 'synthetic_unordered':
     if config['data']['length_sampler'] == 'Constant':
       config['data']['sampler_params'] = {'value': config['data']['length_val']}
+      del config['data']['length_min']
+      del config['data']['length_max']
     elif config['data']['length_sampler'] == 'Uniform':
       config['data']['sampler_params'] = {'min_val': config['data']['length_min'],
                                           'max_val': config['data']['length_max']}
-  del config['data']['length_val']
-  del config['data']['length_min']
-  del config['data']['length_max']
+      del config['data']['length_val']
+
   return config
 
-def get_config(config_type):
+def get_config(config_type, args_by_type):
   config = {}
-  args = ARGS_BY_TYPE[config_type]
+  args = args_by_type[config_type]
 
   for arg in args:
     config[arg] = getattr(FLAGS, arg)

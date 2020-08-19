@@ -53,27 +53,14 @@ def optimization_suite(initial_params, loss_function, optim_config):
 def loss_and_accuracy(network_fun, model_config, optim_config):
 
   n_out = model_config['num_outputs']
+
   bare_loss = losses.binary_xent if n_out == 1 else losses.multiclass_xent
-
   l2_reg = l2_loss(optim_config['L2'])
+  loss_fun = utils.make_loss_function(network_fun, bare_loss, l2_reg)
 
-  def loss_fun(params, batch):
-    all_time_logits = network_fun(params, batch['inputs'])
-    end_logits = utils.select(all_time_logits, batch['index'])
+  acc_fun = utils.make_acc_fun(network_fun, n_out)
 
-    return bare_loss(end_logits, batch['labels']) + l2_reg(params)
-
-  if n_out == 1:
-    prediction_function = lambda x: (x >= 0.).astype(jnp.int32)
-  else:
-    prediction_function = lambda x: x.argmax(axis=-1).astype(jnp.int32)
-
-  def acc_fun(params, batch):
-    all_time_logits = network_fun(params, batch['inputs'])
-    end_logits = utils.select(all_time_logits, batch['index'])
-    predictions = jnp.squeeze(prediction_function(end_logits))
-    accuracies = (batch['labels'] == predictions).astype(jnp.int32)
-    return jnp.mean(accuracies)
+  print("Using RENN for both!")
 
   return loss_fun, acc_fun
 

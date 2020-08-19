@@ -22,19 +22,19 @@ def main(_):
   """Builds and trains a sentiment classification RNN."""
 
   # Get and save config
-  config = argparser.parse_args()
+  config = argparser.parse_args('toy')
   logging.info(json.dumps(config, indent=2))
   reporters.save_config(config)
 
   prng_key = random.PRNGKey(config['run']['seed'])
 
   # Load data
-  vocab_size = len(toy_data.numerical_vocab)
   train_dset = renn.data.Unordered(num_classes=config['data']['num_classes'],
                                         batch_size=config['data']['batch_size'],
                                         length_sampler=config['data']['length_sampler'],
                                         sampler_params=config['data']['sampler_params'])
   vocab_size = len(train_dset.vocab)
+  max_length = train_dset.max_len
 
   # Build network.
   cell = model_utils.get_cell(config['model']['cell_type'],
@@ -49,9 +49,8 @@ def main(_):
                                                     config['model'],
                                                     config['optim'])
 
-  BATCH_SIZE=64
-  MAX_LENGTH=100
-  _, initial_params = init_fun(prng_key, (BATCH_SIZE, MAX_LENGTH))
+  _, initial_params = init_fun(prng_key, (config['data']['batch_size'],
+                                          max_length))
 
   initial_params = model_utils.initialize(initial_params, config['model'])
 
@@ -61,10 +60,9 @@ def main(_):
                                                                         config['optim'])
 
   # Train
-  num_steps = 10000
   global_step = 0
   loss = np.nan
-  for step in range(num_steps):
+  for step in range(config['optim']['steps']):
     batch = next(train_dset)
 
     dynamic_state = {'opt_state': opt_state,
@@ -75,7 +73,6 @@ def main(_):
 
     if global_step % 100 == 1:
       params = get_params(opt_state)
-      print(apply_fun(params, batch['inputs']).shape)
       acc = acc_fun(params, batch).item()
       print(f'Step {global_step}, loss {loss}, acc {acc}')
 

@@ -31,7 +31,7 @@ def main(_):
     tf.config.experimental.set_visible_devices([], "GPU")
 
     # Get and save config
-    config = argparser.parse_args()
+    config = argparser.parse_args('main')
     logging.info(json.dumps(config, indent=2))
 
     reporters.save_config(config)

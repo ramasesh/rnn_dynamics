@@ -14,7 +14,7 @@ import numpy as np
 from renn.rnn import unroll, network
 import renn
 from renn import utils
-from src import data, reporters, argparser, model_utils, optim_utils, measurements, manager, toy_data
+from src import data, reporters, argparser, model_utils, optim_utils, measurements
 
 FLAGS = flags.FLAGS
 

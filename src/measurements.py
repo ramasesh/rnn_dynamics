@@ -1,5 +1,6 @@
 import tensorflow_datasets as tfds
 from jax.experimental import optimizers
+import numpy as np
 
 class AverageMeter:
   """Keeps a running average, used for, e.g., calculating
@@ -25,11 +26,12 @@ def measure_batch_acc(state):
   params = get_params(state)
   batch = state['batch']
 
-  return state['acc_fun'](params, batch)
+  val = state['acc_fun'](params, batch)
+  return float(val)
 
 def measure_batch_loss(state):
   """Measures the loss averaged over a given batch"""
-  return state['batch_train_loss']
+  return float(state['batch_train_loss'])
 
 def measure_test_acc(state):
   """Measures the accuracy averaged over the test set"""
@@ -43,14 +45,14 @@ def measure_test_acc(state):
     batch_avg = acc_fun(params, batch).item()
     test_acc.update(batch_avg, len(batch['inputs']))
 
-  return test_acc.avg
+  return float(test_acc.avg)
 
 def measure_l2_norm(state):
   """Measures the l2 norm (NOT squared l2 norm!) of the
   RNN parameters"""
   params = get_params(state)
   embed_params, rnn_params, output_params = params
-  return optimizers.l2_norm(rnn_params)
+  return float(optimizers.l2_norm(rnn_params))
 
 def get_params(state):
   """Returns model parameters from the full state"""

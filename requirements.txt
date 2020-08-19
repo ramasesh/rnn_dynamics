@@ -9,6 +9,6 @@ tensorflow
 tensorflow-text
 tqdm
 msgpack
---editable git+https://github.com/google-research/reverse-engineering-neural-networks.git@master#egg=renn
---extra-index-url https://artifactory2.nestlabs.com/artifactory/api/pypi/pypi-local/simple
-blueshift-uv==0.3.0
+--editable git+https://github.com/google-research/reverse-engineering-neural-networks.git@synthetic_data#egg=renn
+uv-metrics>=0.4.2
+pg8000>=1.16.1

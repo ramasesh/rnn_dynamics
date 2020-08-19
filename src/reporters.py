@@ -1,11 +1,12 @@
 import fs
 from uv.fs.reporter import FSReporter
+from uv.mlflow.reporter import MLFlowReporter
 from typing import Optional, Dict, List
 import uv.types as t
 import uv.util as u
 import uv.reporter as r
 import pickle
-
+import collections
 
 def gcloud_reporter(prefix: str, job_name: str):
   """Returns a reporter which persists metrics in GCloud in jsonl format.
@@ -44,6 +45,9 @@ def build_reporters(
   base = r.MemoryReporter(data_store).stepped()
   log = r.LoggingReporter()
   base = base.plus(log)
+
+  mlf = MLFlowReporter()
+  base = base.plus(mlf)
 
   base_loc = save_config['save_location']
   job_name = save_config['job_name']
@@ -169,3 +173,13 @@ def is_gcloud(folder: str) -> bool:
 
 def insert_in_str(source_str: str, insert_str: str, pos: int) -> str:
   return source_str[:pos] + insert_str + source_str[pos:]
+
+def flatten(d, parent_key='', sep='_'):
+  items = []
+  for k, v in d.items():
+    new_key = parent_key + sep + k if parent_key else k
+    if isinstance(v, collections.MutableMapping):
+      items.extend(flatten(v, new_key, sep=sep).items())
+    else:
+      items.append((new_key, v))
+  return dict(items)

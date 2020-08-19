@@ -22,8 +22,12 @@ flags.DEFINE_string('pretrained', None, 'Filepath of pretrained model parameters
 # data config
 flags.DEFINE_integer('batch_size', 64, 'Optimization batch size')
 flags.DEFINE_integer('max_pad', 160, 'Max sequence length')
-flags.DEFINE_enum('dataset', 'imdb', ['imdb', 'yelp', 'ag_news'], 'dataset')
+flags.DEFINE_enum('dataset', 'imdb', ['imdb', 'yelp', 'ag_news','synthetic_unordered'], 'dataset')
 flags.DEFINE_integer('num_classes', None, 'Number of classes in the dataset')
+flags.DEFINE_enum('length_sampler', 'Constant', ['Constant', 'Uniform'], 'type of length sampler')
+flags.DEFINE_integer('length_val', 40, 'Constant length')
+flags.DEFINE_integer('length_min', 20, 'Uniform length minimum')
+flags.DEFINE_integer('length_max', 50, 'Uniform length maximum')
 
 # optim config
 flags.DEFINE_float('base_lr', 1e-3, 'Initial learning rate')
@@ -46,7 +50,8 @@ flags.DEFINE_integer('checkpoint_interval', 1000, 'Number of steps between check
 FLAGS = flags.FLAGS
 
 ARGS_BY_TYPE = {'model': ['cell_type', 'emb_size', 'num_units', 'pretrained'],
-                'data': ['dataset', 'batch_size', 'max_pad', 'num_classes'],
+                'data': ['dataset', 'batch_size', 'max_pad', 'num_classes',
+                         'length_sampler', 'length_min', 'length_max', 'length_val'],
                 'optim': ['base_lr', 'lr_decay_steps', 'lr_decay_rate',
                           'num_epochs', 'gradient_clip', 'L2'],
                 'run': ['seed'],
@@ -67,8 +72,9 @@ def parse_args():
   return config
 
 def populate_classes_and_outputs(config):
-  class_options = {'imdb': [2], 'yelp': [2,3,5], 'ag_news': [2, 3, 4]}
-  class_defaults = {'imdb': 2, 'yelp': 5, 'ag_news': 4}
+  class_options = {'imdb': [2], 'yelp': [2,3,5],
+                   'ag_news': [2, 3, 4], 'synthetic_unordered': [2,3,4,5]}
+  class_defaults = {'imdb': 2, 'yelp': 5, 'ag_news': 4, 'synthetic_unordered': 3}
 
   dataset = config['data']['dataset']
 
@@ -86,6 +92,17 @@ def populate_classes_and_outputs(config):
   else:
     config['data']['num_classes'] = class_defaults[dataset]
   config['model']['num_outputs'] = classes_to_outputs(config['data']['num_classes'])
+
+  # Handle synthetic data
+  if dataset == 'synthetic_unordered':
+    if config['data']['length_sampler'] == 'Constant':
+      config['data']['sampler_params'] = {'value': config['data']['length_val']}
+    elif config['data']['length_sampler'] == 'Uniform':
+      config['data']['sampler_params'] = {'min_val': config['data']['length_min'],
+                                          'max_val': config['data']['length_max']}
+  del config['data']['length_val']
+  del config['data']['length_min']
+  del config['data']['length_max']
   return config
 
 def get_config(config_type):

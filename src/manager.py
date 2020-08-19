@@ -34,4 +34,4 @@ class MeasurementManager:
 
       step_msmts[msmt_name] = msmt_value
 
-    self.reporter.report_all(step, step_msmts)
+    self.reporter.report_all(int(step), step_msmts)

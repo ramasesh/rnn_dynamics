@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from itertools import combinations
 import functools
 from sklearn.decomposition import PCA
@@ -7,9 +6,14 @@ import renn
 from renn.rnn import cells
 import jax.numpy as jnp
 from jax.experimental import optimizers
+
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 def cumulative_var_explained(pca_object):
+  """ For a given PCA object, returns how much variance
+  is explained by each dimension """
   return np.cumsum(pca_object.explained_variance_ratio_)
 
 def plot_varexp(var_exp_dictionary):
@@ -117,11 +121,47 @@ def plot_states(states_by_value, readouts=None,
                 initial_state=None, pc_dimensions=[0,1]):
 
   if len(pc_dimensions) == 2:
-    plot_states_2d(states_by_value, readouts, initial_state, pc_dimensions)
-  elif len(pc_dimensions) == 2:
-    plot_states_3d(states_by_value, readouts, initial_state, pc_dimensions)
+    return plot_states_2d(states_by_value, readouts, initial_state, pc_dimensions)
+  elif len(pc_dimensions) == 3:
+    return plot_states_3d(states_by_value, readouts, initial_state, pc_dimensions)
   else:
     raise ValueError('pc_dimensions must have length 2 or 3')
+
+def plot_states_3d(states_by_value, readouts, initial_state, pc_dimensions):
+
+  COLORS = ['red', 'blue', 'green', 'orange']
+
+  d0, d1, d2 = pc_dimensions
+  x_ro = readouts[:, d0]
+  y_ro = readouts[:, d1]
+  z_ro = readouts[:, d2]
+
+  fig = plt.figure(figsize=(10,10))
+  ax = fig.add_subplot(111, projection='3d')
+  for k, states in states_by_value.items():
+    # plot states
+    for ind, trajectory in enumerate(states):
+      if ind == 0:
+        ax.plot(trajectory[:,d0], trajectory[:,d1], trajectory[:,d2], label=k, color=COLORS[k], alpha=0.2)
+      else:
+        ax.plot(trajectory[:,d0], trajectory[:,d1], trajectory[:,d2], color=COLORS[k], alpha=0.2)
+      ax.scatter(trajectory[-1,d0], trajectory[-1,d1], trajectory[-1,d2], marker='.', color=COLORS[k])
+
+    # plot readouts
+    ax.plot(np.array([0, x_ro[k]]), np.array([0,y_ro[k]]), np.array([0,z_ro[k]]),
+            color=COLORS[k], linestyle='dashed')
+
+  # plot initial state
+  ax.scatter(initial_state[0][d0], initial_state[0][d1],
+              initial_state[0][d2],
+              marker=(5,1), color='orange', s=400)
+
+  return fig, ax
+
+  #plt.xlabel(f'PC Component {d0}')
+  #plt.ylabel(f'PC Component {d1}')
+  #plt.axis('equal')
+  #plt.legend(loc='upper right')
 
 def plot_states_2d(states_by_value, readouts, initial_state, pc_dimensions):
 
@@ -244,5 +284,21 @@ def plot_logits(readout_function, readout_parameters, point_set,
   f.tight_layout()
   return f
 
+from collections import defaultdict
 
+def pseudogrid(coordinates, dimension):
+  all_coordinates = defaultdict(lambda: np.array(0.0))
+  all_coordinates.update(coordinates)
 
+  max_specified_dim = max(coordinates.keys())
+
+  if max_specified_dim > 32:
+    raise NotImplementedError('Maximum specified dimension cannot exceed 32')
+
+  extra_dimensions = dimension - max_specified_dim - 1
+  points = np.meshgrid(*[all_coordinates[i] for i in range(max_specified_dim+1)])
+  points = np.stack(points).reshape(max_specified_dim+1, -1).T
+
+  extra_coordinates = np.zeros((points.shape[0], extra_dimensions))
+
+  return np.concatenate((points, extra_coordinates), axis=1)

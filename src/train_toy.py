@@ -12,6 +12,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from renn.rnn import unroll, network
+import renn
 from renn import utils
 from src import data, reporters, argparser, model_utils, optim_utils, measurements, manager, toy_data
 
@@ -29,7 +30,11 @@ def main(_):
 
   # Load data
   vocab_size = len(toy_data.numerical_vocab)
-  train_dset = toy_data.ToyDataset(40, 20)
+  train_dset = renn.data.Unordered(num_classes=config['data']['num_classes'],
+                                        batch_size=config['data']['batch_size'],
+                                        length_sampler=config['data']['length_sampler'],
+                                        sampler_params=config['data']['sampler_params'])
+  vocab_size = len(train_dset.vocab)
 
   # Build network.
   cell = model_utils.get_cell(config['model']['cell_type'],
@@ -68,8 +73,9 @@ def main(_):
 
     global_step, opt_state, loss = step_fun(global_step, opt_state, batch)
 
-    if global_step % 100 == 0:
+    if global_step % 100 == 1:
       params = get_params(opt_state)
+      print(apply_fun(params, batch['inputs']).shape)
       acc = acc_fun(params, batch).item()
       print(f'Step {global_step}, loss {loss}, acc {acc}')
 

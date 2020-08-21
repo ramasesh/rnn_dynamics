@@ -60,8 +60,6 @@ def loss_and_accuracy(network_fun, model_config, optim_config):
 
   acc_fun = utils.make_acc_fun(network_fun, n_out)
 
-  print("Using RENN for both!")
-
   return loss_fun, acc_fun
 
 def l2_loss(l2_penalty):

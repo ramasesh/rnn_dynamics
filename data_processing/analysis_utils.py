@@ -286,19 +286,13 @@ def plot_logits(readout_function, readout_parameters, point_set,
 
 from collections import defaultdict
 
-def pseudogrid(coordinates, dimension):
-  all_coordinates = defaultdict(lambda: np.array(0.0))
-  all_coordinates.update(coordinates)
+def squash(points, transform_object, n_dims_keep):
+  """ Given a set of points and a transform object,
+  transform the points using the transform, squash all
+  dimensions after the first n_dims_keep dimensions to
+  zero, and then transforms back to original space """
 
-  max_specified_dim = max(coordinates.keys())
-
-  if max_specified_dim > 32:
-    raise NotImplementedError('Maximum specified dimension cannot exceed 32')
-
-  extra_dimensions = dimension - max_specified_dim - 1
-  points = np.meshgrid(*[all_coordinates[i] for i in range(max_specified_dim+1)])
-  points = np.stack(points).reshape(max_specified_dim+1, -1).T
-
-  extra_coordinates = np.zeros((points.shape[0], extra_dimensions))
-
-  return np.concatenate((points, extra_coordinates), axis=1)
+  transformed = transform_object.transform(points)
+  transformed[:, n_dims_keep:] = 0.0
+  squashed = transform_object.inverse_transform(transformed)
+  return squashed

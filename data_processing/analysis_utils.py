@@ -6,7 +6,7 @@ import renn
 from renn.rnn import cells
 import jax.numpy as jnp
 from jax.experimental import optimizers
-
+import jax
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -96,7 +96,6 @@ class PCA_rnn(PCA):
     else:
       return self.transform(X)
 
-# TODO there was a jax.jit here, should we do that?
 def _get_all_states(cell, inputs, rnn_params, emb_params, emb_apply_fn):
   rnn_inputs = emb_apply_fn(emb_params, inputs)
   initial_states = cell.get_initial_state(rnn_params,
@@ -129,7 +128,7 @@ def plot_states(states_by_value, readouts=None,
 
 def plot_states_3d(states_by_value, readouts, initial_state, pc_dimensions):
 
-  COLORS = ['red', 'blue', 'green', 'orange']
+  COLORS = ['red', 'blue', 'green', 'orange', 'purple']
 
   d0, d1, d2 = pc_dimensions
   x_ro = readouts[:, d0]
@@ -165,35 +164,62 @@ def plot_states_3d(states_by_value, readouts, initial_state, pc_dimensions):
 
 def plot_states_2d(states_by_value, readouts, initial_state, pc_dimensions):
 
-  COLORS = ['red', 'blue', 'green', 'orange']
+  COLORS = ['red', 'blue', 'green', 'orange', 'purple']
 
   d0, d1 = pc_dimensions
   x_ro = readouts[:, d0]
   y_ro = readouts[:, d1]
+  fig = plt.figure(figsize=(10,10))
+  ax = fig.add_subplot(111)
   for k, states in states_by_value.items():
     # plot states
     for ind, trajectory in enumerate(states):
       if ind == 0:
-        plt.plot(trajectory[:,d0], trajectory[:,d1], label=k, color=COLORS[k], alpha=0.2)
+        ax.plot(trajectory[:,d0], trajectory[:,d1], label=k, color=COLORS[k], alpha=0.2)
       else:
-        plt.plot(trajectory[:,d0], trajectory[:,d1], color=COLORS[k], alpha=0.2)
-      plt.scatter(trajectory[-1,d0], trajectory[-1,d1], marker='.', color=COLORS[k])
+        ax.plot(trajectory[:,d0], trajectory[:,d1], color=COLORS[k], alpha=0.2)
+      ax.scatter(trajectory[-1,d0], trajectory[-1,d1], marker='.', color=COLORS[k])
 
     # plot readouts
-    plt.plot(np.array([0, x_ro[k]]), np.array([0,y_ro[k]]), color=COLORS[k], linestyle='dashed')
+    ax.plot(np.array([0, x_ro[k]]), np.array([0,y_ro[k]]), color=COLORS[k], linestyle='dashed')
 
   # plot initial state
-  plt.scatter(initial_state[0][d0], initial_state[0][d1],
+  ax.scatter(initial_state[0][d0], initial_state[0][d1],
               marker=(5,1), color='orange', s=400)
 
+  ax.set_xlabel(f'PC Component {d0}')
+  ax.set_ylabel(f'PC Component {d1}')
+  ax.legend(loc='upper right')
+
+  return fig, ax
+
+def plot_traj_2d(trajectories, pc_dimensions, initial_state=None, labels=None,
+                 xlim=4, ylim=4):
+
+  COLORS = ['red', 'blue', 'green', 'orange', 'purple']
+
+  d0, d1 = pc_dimensions
+  for traj_ind, traj in enumerate(trajectories):
+    # plot states
+    if labels is not None:
+      plt.plot(traj[:,d0], traj[:,d1], color=COLORS[labels[traj_ind]], alpha=0.2)
+    else:
+      plt.plot(traj[:,d0], traj[:,d1], color='k', alpha=0.2)
+    plt.scatter(traj[-1,d0], traj[-1,d1], marker='.', color='k')
+
+  if initial_state is not None:
+    # plot initial state
+    plt.scatter(initial_state[0][d0], initial_state[0][d1],
+              marker=(5,1), color='orange', s=400)
+
+  plt.xlim(-xlim,xlim)
+  plt.ylim(-ylim,ylim)
   plt.xlabel(f'PC Component {d0}')
   plt.ylabel(f'PC Component {d1}')
-  plt.axis('equal')
-  plt.legend(loc='upper right')
 
 def plot_fp_2d(fixed_points, losses, readouts, initial_state, pc_dimensions,
                point_to_highlight=None):
-  COLORS = ['red', 'blue', 'green', 'orange']
+  COLORS = ['red', 'blue', 'green', 'orange', 'purple']
 
   d0, d1 = pc_dimensions
   x_ro = readouts[:, d0]
@@ -251,8 +277,8 @@ def fixed_points(cell,
 
 def plot_logits(readout_function, readout_parameters, point_set,
                 PCA_object, pc_dimensions=[0,1]):
-  LOGIT_COLORS = ['Reds', 'Blues', 'Greens', 'Oranges']
-  prediction_color = ['red', 'blue', 'green', 'orange']
+  LOGIT_COLORS = ['Reds', 'Blues', 'Greens', 'Oranges', 'Purples']
+  prediction_color = ['red', 'blue', 'green', 'orange', 'purple']
 
   logits = readout_function(readout_parameters, point_set)
 
@@ -296,3 +322,46 @@ def squash(points, transform_object, n_dims_keep):
   transformed[:, n_dims_keep:] = 0.0
   squashed = transform_object.inverse_transform(transformed)
   return squashed
+
+def shuffle_words(batch):
+  """ Returns a batch in which each example is a shuffled
+  version of the sentences in the argument batch. """
+
+  batch.update({'inputs': shuffle(batch['inputs'], batch['index'])})
+  return batch
+
+def shuffle(sentences, lengths):
+  """ Shuffles sentences, respecting the length of the
+  sentences """
+  n_sentences, sentence_length = sentences.shape
+  permuted_indices = np.full(sentences.shape,
+                             np.arange(sentence_length))
+
+  for i in range(n_sentences):
+    permutation = np.random.permutation(lengths[i])
+    permuted_indices[i, :len(permutation)] = permutation
+
+  return reorder(sentences, permuted_indices)
+
+def reorder(input_array, indices):
+  """ Reorders row of input_array according to the specification
+  in indices
+
+  Arguments:
+    input_array: a 2D np array
+    indices: a np array with the same shape as input_array
+
+  Returns:
+    reordered_array: a 2D np array whose rows have been
+                     reordered from input_array
+
+  Example:
+    input_array: np.array([['A', 'B', 'C'],
+                           ['D', 'E', 'F']])
+    indices: np.array([[0,1,2],
+                       [2,1,0]])
+    reordered_array: np.array([['A', 'B', 'C'],
+                               ['F', 'E', 'D']])
+  """
+  reordered_array = np.array([row[order] for row, order in zip(input_array, indices)])
+  return reordered_array

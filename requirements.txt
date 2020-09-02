@@ -10,5 +10,5 @@ tensorflow-text
 tqdm
 msgpack>=1.0.0
 --editable git+https://github.com/google-research/reverse-engineering-neural-networks.git@master#egg=renn
-uv-metrics>=0.4.2
+--editable git+https://github.com/google/uv-metrics.git@master#egg=uv-metrics
 pg8000>=1.16.1

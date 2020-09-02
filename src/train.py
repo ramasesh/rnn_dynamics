@@ -83,6 +83,9 @@ def main(_):
     oscilloscope.add_measurement({'name': 'test_acc',
                                   'interval': config['save']['measure_test'],
                                   'function': measurements.measure_test_acc})
+    oscilloscope.add_measurement({'name': 'shuffled_test_acc',
+                                  'interval': config['save']['measure_test'],
+                                  'function': measurements.measure_shuffled_acc})
     oscilloscope.add_measurement({'name': 'train_acc',
                                   'interval': config['save']['measure_train'],
                                   'function': measurements.measure_batch_acc})
@@ -102,7 +105,7 @@ def main(_):
                          'batch_train_loss': loss,
                          'batch': batch}
 
-        oscilloscope.measure(global_step, dynamic_state)
+        oscilloscope.measure(int(global_step), dynamic_state)
 
         global_step, opt_state, loss = step_fun(global_step, opt_state, batch)
 
@@ -111,7 +114,7 @@ def main(_):
           np_params = np.asarray(params, dtype=object)
           reporters.save_dict(config, np_params, f'checkpoint_{global_step}')
 
-    oscilloscope.measure(global_step, dynamic_state, measurement_list=['test_acc'])
+    oscilloscope.measure(int(global_step), dynamic_state, measurement_list=['test_acc', 'shuffled_test_acc'])
 
     final_params = {'params': np.asarray(get_params(opt_state), dtype=object)}
     reporters.save_dict(config, final_params, 'final_params')

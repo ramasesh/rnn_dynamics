@@ -30,6 +30,12 @@ def get_dataset(data_config):
                                           data_config['num_classes'])
     vocab_size = encoder.vocab_size
 
+  elif data_config['dataset'] == 'dbpedia':
+    encoder, train_dset, test_dset = dbpedia(data_config['max_pad'],
+                                          data_config['batch_size'],
+                                          data_config['num_classes'])
+    vocab_size = encoder.vocab_size
+
   elif data_config['dataset'] == 'ag_news':
     # currently, we copy the vocab file from renn
     # before job submission.  Is there a way to make sure these are synced?
@@ -47,6 +53,42 @@ def get_dataset(data_config):
                                data_dir='./data')
 
   return vocab_size, train_dset, test_dset
+
+def dbpedia(sequence_length, batch_size, num_classes=14):
+  """
+  Returns the DBPedia dataset, with the specified number of classes.
+
+  Arguments:
+    sequence_length -
+    batch_size -
+    num_classes - the number of classes to divide up the dataset into.
+                  Allowed number of classes are 2, 3, ..., 14
+                  We keep classes 0, 1, ..., num_classes - 1
+  """
+
+  class_label = {x: x - 1 for x in range(1,num_classes+1)}
+  print(class_label)
+
+  vocab_filename = './data/vocab/yelp'
+  encoder = tfds.features.text.SubwordTextEncoder.load_from_file(vocab_filename)
+
+  dset_types = ['train', 'test']
+  output_types = {'text': tf.int64,
+                  'label': tf.int64}
+
+  train_filename = './data/dbpedia/train.csv'
+  train_iterator = lambda : data_utils.readfile(encoder, train_filename,
+                                          class_label, three_column=True)
+  train_dataset = tf.data.Dataset.from_generator(train_iterator, output_types)
+  pipelined_train = pipeline(train_dataset, sequence_length, batch_size, bufsize=262144)
+
+  test_filename = './data/dbpedia/test.csv'
+  test_iterator = lambda : data_utils.readfile(encoder, test_filename,
+                                          class_label, three_column=True)
+  test_dataset = tf.data.Dataset.from_generator(test_iterator, output_types)
+  pipelined_test = pipeline(test_dataset, sequence_length, batch_size)
+
+  return encoder, pipelined_train, pipelined_test
 
 def yelp(sequence_length, batch_size, num_classes=5):
   """

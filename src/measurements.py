@@ -1,6 +1,7 @@
 import tensorflow_datasets as tfds
 from jax.experimental import optimizers
 import numpy as np
+from src import data_utils
 
 class AverageMeter:
   """Keeps a running average, used for, e.g., calculating
@@ -32,6 +33,22 @@ def measure_batch_acc(state):
 def measure_batch_loss(state):
   """Measures the loss averaged over a given batch"""
   return float(state['batch_train_loss'])
+
+def measure_shuffled_acc(state):
+  """Measures the accuracy averaged over the test set
+  Shuffling the batch before the accuracy measurement"""
+  test_set = state['test_set']
+  test_acc = AverageMeter()
+
+  params = get_params(state)
+  acc_fun = state['acc_fun']
+
+  for batch in tfds.as_numpy(test_set):
+    batch = data_utils.shuffle_words(batch)
+    batch_avg = acc_fun(params, batch).item()
+    test_acc.update(batch_avg, len(batch['inputs']))
+
+  return float(test_acc.avg)
 
 def measure_test_acc(state):
   """Measures the accuracy averaged over the test set"""

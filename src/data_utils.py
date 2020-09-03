@@ -3,25 +3,6 @@ import os
 import tensorflow_datasets as tfds
 import csv
 
-def readfile(encoder, filename, label_converter, three_column=False):
-  """
-  label_converter is a dictionary encoding how to map the score
-  in the csv file to an actual label.
-  """
-  with open(filename, 'r') as f:
-    for row in csv.reader(f):
-
-      if three_column:
-        score, _, text = row
-      else:
-        score, text = row
-
-      if int(score) not in label_converter.keys():
-        continue
-
-      yield {'text': encoder.encode(text),
-             'label': label_converter[int(score)]}
-
 def shuffle_words(batch):
   """ Returns a batch in which each example is a shuffled
   version of the sentences in the argument batch. """

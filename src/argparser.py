@@ -47,6 +47,8 @@ flags.DEFINE_string('job_name_template', 'dynamics', 'Job name template')
 flags.DEFINE_integer('measure_train', 1000, 'Number of steps between measurements')
 flags.DEFINE_integer('measure_test', 1000, 'Number of steps between test measurements.')
 flags.DEFINE_integer('checkpoint_interval', 1000, 'Number of steps between checkpointng')
+flags.DEFINE_string('mlflow_expname', 'RNN Dynamics', 'Experiment name for MLFLow reporter')
+flags.DEFINE_string('mlflow_runname', 'dynamics', 'Run name for MLFLow reporter')
 
 FLAGS = flags.FLAGS
 
@@ -56,7 +58,8 @@ ARGS_BY_TYPE = {'model': ['cell_type', 'emb_size', 'num_units', 'pretrained'],
                           'num_epochs', 'gradient_clip', 'L2'],
                 'run': ['seed'],
                 'save': ['save_location', 'job_name_template', 'measure_train',
-                         'measure_test', 'checkpoint_interval']}
+                         'measure_test', 'checkpoint_interval', 'mlflow_expname',
+                         'mlflow_runname']}
 
 TOY_ARGS_BY_TYPE = {'model': ['cell_type', 'emb_size', 'num_units', 'pretrained'],
                 'data': ['dataset', 'batch_size', 'num_classes',
@@ -65,7 +68,8 @@ TOY_ARGS_BY_TYPE = {'model': ['cell_type', 'emb_size', 'num_units', 'pretrained'
                           'steps', 'gradient_clip', 'L2'],
                 'run': ['seed'],
                 'save': ['save_location', 'job_name_template', 'measure_train',
-                         'measure_test', 'checkpoint_interval']}
+                         'measure_test', 'checkpoint_interval', 'mlflow_expname',
+                         'mlflow_runname']}
 
 
 def parse_args(train_type='main'):
@@ -82,11 +86,11 @@ def parse_args(train_type='main'):
     config[f'{config_type}'] = get_config(config_type, args_by_type)
   config['env_info'] = _get_env_info()
 
-  print(config)
 
+  config = add_run_id(config)
   config = populate_classes_and_outputs(config)
   config = populate_save_location(config)
-
+  config = populate_mlflow_runname(config)
   return config
 
 def populate_classes_and_outputs(config):
@@ -145,16 +149,32 @@ def _get_random_key(key_len=8):
   char_list = string.ascii_lowercase + string.digits
   return ''.join(random.choices(char_list, k=key_len))
 
-def populate_save_location(config):
+def flatten_config(config):
   all_arguments = {}
   for key in config.keys():
     all_arguments.update(config[key])
+  return all_arguments
 
-  run_id = _get_random_key()
+def add_run_id(config):
+  config['save']['run_id'] = _get_random_key()
+  return config
 
-  job_name = config['save']['job_name_template'].format(**all_arguments)
-  job_name = job_name + f'_run_{run_id}'
+def populate_save_location(config):
+  all_arguments = flatten_config(config)
+
+  template = config['save']['job_name_template'] + '_run_{run_id}'
+  job_name = template.format(**all_arguments)
   config['save'].update({'job_name': job_name})
 
   return config
+
+def populate_mlflow_runname(config):
+  all_arguments = flatten_config(config)
+
+  template = config['save']['mlflow_runname'] + '_run_{run_id}'
+  mlflow_runname = template.format(**all_arguments)
+  config['save'].update({'mlflow_runname': mlflow_runname})
+
+  return config
+
 

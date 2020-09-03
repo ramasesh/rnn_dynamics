@@ -24,15 +24,16 @@ from uv.mlflow.reporter import MLFlowReporter
 FLAGS = flags.FLAGS
 
 def main(_):
-  with uv.start_run(), uv.active_reporter(MLFlowReporter()):
-    """Builds and trains a sentiment classification RNN."""
+  """Builds and trains a sentiment classification RNN."""
 
-    # prevent tf from accessing GPU
-    tf.config.experimental.set_visible_devices([], "GPU")
+  # prevent tf from accessing GPU
+  tf.config.experimental.set_visible_devices([], "GPU")
 
-    # Get and save config
-    config = argparser.parse_args('main')
-    logging.info(json.dumps(config, indent=2))
+  # Get and save config
+  config = argparser.parse_args('main')
+  logging.info(json.dumps(config, indent=2))
+
+  with uv.start_run(experiment_name=config['save']['mlflow_expname'], run_name=config['save']['mlflow_runname']), uv.active_reporter(MLFlowReporter()):
 
     reporters.save_config(config)
 

@@ -22,7 +22,7 @@ flags.DEFINE_string('pretrained', None, 'Filepath of pretrained model parameters
 # data config
 flags.DEFINE_integer('batch_size', 64, 'Optimization batch size')
 flags.DEFINE_integer('max_pad', 160, 'Max sequence length')
-flags.DEFINE_enum('dataset', 'imdb', ['imdb', 'yelp', 'ag_news','synthetic_unordered', 'dbpedia'], 'dataset')
+flags.DEFINE_enum('dataset', 'imdb', ['imdb', 'yelp', 'ag_news','synthetic_unordered', 'dbpedia', 'amazon'], 'dataset')
 flags.DEFINE_integer('num_classes', None, 'Number of classes in the dataset')
 flags.DEFINE_enum('length_sampler', 'Constant', ['Constant', 'Uniform'], 'type of length sampler')
 flags.DEFINE_integer('length_val', 40, 'Constant length')
@@ -96,9 +96,10 @@ def parse_args(train_type='main'):
 def populate_classes_and_outputs(config):
   class_options = {'imdb': [2], 'yelp': [2,3,5],
                    'ag_news': [2, 3, 4], 'synthetic_unordered': [2,3,4,5],
+                   'amazon': [2,3,5],
                    'dbpedia': [2,3,4,5,6,7,8,9,10,11,12,13,14]}
   class_defaults = {'imdb': 2, 'yelp': 5, 'ag_news': 4, 'synthetic_unordered': 3,
-                    'dbpedia': 15}
+                    'dbpedia': 15, 'amazon': 5}
 
   dataset = config['data']['dataset']
 

@@ -67,6 +67,20 @@ def plot_alignment(PCA_dictionary):
   fig.tight_layout()
   return fig
 
+def eigsorted(jac):
+  unsorted_eigvals, unsorted_rights = np.linalg.eig(jac)
+
+  def sorting_function(evals):
+    return np.abs(1. /np.log(np.abs(evals)))
+
+  sorted_indices = np.flipud(np.argsort(sorting_function(unsorted_eigvals)))
+
+  eigenvalues = unsorted_eigvals[sorted_indices]
+  rights = unsorted_rights[:, sorted_indices]
+  lefts = np.linalg.pinv(rights).T
+
+  return rights, eigenvalues, lefts
+
 def top_evecs(matrix_valued_fn, evaluation_pts, top_k = 2):
   """
   Returns the eigenvalues with the highest magnitude of eigenvectors
@@ -74,7 +88,7 @@ def top_evecs(matrix_valued_fn, evaluation_pts, top_k = 2):
   """
 
   def top(m):
-    R, E, L = renn.eigsorted(m)
+    R, E, L = eigsorted(m)
     top_eigs = R[:,:top_k]
 
     return top_eigs

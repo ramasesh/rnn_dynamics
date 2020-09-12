@@ -64,13 +64,14 @@ def loss_and_accuracy(network_fun, model_config, optim_config):
 
 def l2_loss(l2_penalty):
   """ Returns a loss function which maps parameters to
-  the l2_penalty times the l2_norm of the RNN parameters only"""
+  the l2_penalty times the squared l2_norm of the RNN
+  parameters only"""
 
   if l2_penalty == 0.0:
     return lambda x: 0.0
   else:
     def l2(params):
       emb_params, rnn_params, readout_params = params
-      return l2_penalty * optimizers.l2_norm(rnn_params)
+      return l2_penalty * jnp.power(optimizers.l2_norm(rnn_params), 2)
 
     return l2

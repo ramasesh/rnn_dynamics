@@ -18,7 +18,8 @@ from renn import utils
 from src import data, reporters, argparser, model_utils, optim_utils, measurements
 
 import uv
-import uv.manager as m
+import uv.experimental.metriccallback as m
+ 
 from uv.mlflow.reporter import MLFlowReporter
 
 FLAGS = flags.FLAGS
@@ -78,23 +79,27 @@ def main(_):
                     'param_extractor': get_params,
                     'test_set': test_dset}
 
-    oscilloscope = m.MeasurementManager(static_state,
-                                            reporter)
+    oscilloscope = m.MetricCallback(static_state)
+
+    def interval_trigger(interval):
+      def function_to_return(x):
+        return x % interval == 0
+      return function_to_return
 
     oscilloscope.add_measurement({'name': 'test_acc',
-                                  'interval': config['save']['measure_test'],
+                                  'trigger': interval_trigger(config['save']['measure_test']),
                                   'function': measurements.measure_test_acc})
     oscilloscope.add_measurement({'name': 'shuffled_test_acc',
-                                  'interval': config['save']['measure_test'],
+                                  'trigger': interval_trigger(config['save']['measure_test']),
                                   'function': measurements.measure_shuffled_acc})
     oscilloscope.add_measurement({'name': 'train_acc',
-                                  'interval': config['save']['measure_train'],
+                                  'trigger': interval_trigger(config['save']['measure_train']),
                                   'function': measurements.measure_batch_acc})
     oscilloscope.add_measurement({'name': 'train_loss',
-                                  'interval': config['save']['measure_train'],
+                                  'trigger': interval_trigger(config['save']['measure_train']),
                                   'function': measurements.measure_batch_loss})
     oscilloscope.add_measurement({'name': 'l2_norm',
-                                  'interval': config['save']['measure_test'],
+                                  'trigger': interval_trigger(config['save']['measure_test']),
                                   'function': measurements.measure_l2_norm})
     # Train
     global_step = 0
@@ -106,7 +111,9 @@ def main(_):
                          'batch_train_loss': loss,
                          'batch': batch}
 
-        oscilloscope.measure(int(global_step), dynamic_state)
+        step_measurements = oscilloscope.measure(int(global_step), dynamic_state)
+        if step_measurements is not None:
+          reporter.report_all(int(global_step), step_measurements)
 
         global_step, opt_state, loss = step_fun(global_step, opt_state, batch)
 
@@ -115,7 +122,8 @@ def main(_):
           np_params = np.asarray(params, dtype=object)
           reporters.save_dict(config, np_params, f'checkpoint_{global_step}')
 
-    oscilloscope.measure(int(global_step), dynamic_state, measurement_list=['test_acc', 'shuffled_test_acc'])
+    final_measurements = oscilloscope.measure(int(global_step), dynamic_state, measurement_list=['test_acc', 'shuffled_test_acc'])
+    reporter.report_all(int(global_step), final_measurements)
 
     final_params = {'params': np.asarray(get_params(opt_state), dtype=object)}
     reporters.save_dict(config, final_params, 'final_params')

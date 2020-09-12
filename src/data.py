@@ -54,7 +54,7 @@ def get_dataset(data_config):
     test_dset = datasets.dbpedia('test', data_config['num_classes'],
                                vocab_file, data_config['max_pad'],
                                data_config['batch_size'],
-                               data_dir='./data/yelp/')
+                               data_dir='./data/dbpedia/')
 
   elif data_config['dataset'] == 'ag_news':
     vocab_file = './data/vocab/ag_news.vocab'

@@ -1,0 +1,12 @@
+data/
+.dockerignore
+*.pyc
+*/*.pyc
+*.*.pyc
+results/
+experiment_configs/
+.ipynb_checkpoints/
+src/__pycache__/
+.calibanconfig.json
+rnn_dynamics.egg-info/
+env/

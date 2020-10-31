@@ -5,7 +5,7 @@ ipython
 https://storage.googleapis.com/jax-releases/cuda100/jaxlib-0.1.51-cp37-none-manylinux2010_x86_64.whl
 jax
 tensorflow_datasets==3.2.1
-tensorflow==1.15
+tensorflow==1.15.4
 tqdm
 --editable git+https://github.com/google-research/reverse-engineering-neural-networks.git@master#egg=renn
 uv-metrics

@@ -5,10 +5,14 @@ ipython
 https://storage.googleapis.com/jax-releases/cuda100/jaxlib-0.1.51-cp37-none-manylinux2010_x86_64.whl
 jax
 tfds-nightly
-tensorflow
+tensorflow==1.15.4
 tensorflow-text
 tqdm
-msgpack>=1.0.0
---editable git+https://github.com/google-research/reverse-engineering-neural-networks.git@master#egg=renn
+renn
 uv-metrics
+msgpack>=1.0.0
 pg8000>=1.16.1
+matplotlib
+seaborn
+sklearn
+jupyter

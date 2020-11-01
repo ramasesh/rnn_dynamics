@@ -2,6 +2,8 @@
 
 See results in [arXiv:2010.15114](https://arxiv.org/abs/2010.15114).  This repo contains code (written in JAX) for training networks on various text-classification tasks and analyzing the learned dynamical systems.  
 
+**Note**: This repo is in the process of being converted to open-source, but still has artifacts left over from the earlier, more messy state, e.g. the name of the cloud storage bucket.  These should be fixed soon.
+
 ## Running locally
 
 Install dependencies using `make` or `pip`:

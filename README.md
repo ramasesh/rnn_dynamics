@@ -16,6 +16,13 @@ pip install -r pip_requirements.txt
 ```
 can be used to install the dependencies in an existing VirtualEnv.
 
+### pip_requirements.txt vs requirements.txt
+
+Currently, there are both a `pip_requirements.txt` and a `requirements.txt` file
+in the project root directory.  The `requirements.txt` file was used with
+Docker for cloud job submission, but except for the version of JAX, the two
+files should be identical.  Either should be fine for installation. 
+
 ## Training
 
 To train a model, run a command like the following:

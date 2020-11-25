@@ -15,5 +15,5 @@ PY = $(ENV_NAME)/bin/python
 install:
 	rm -rf $(ENV_NAME)
 	virtualenv -p python3 $(ENV_NAME)
-	$(PIP) install -r requirements.txt
+	$(PIP) install -r pip_requirements.txt
 	$(PIP) install -e .

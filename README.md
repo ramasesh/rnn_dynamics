@@ -12,7 +12,7 @@ make install
 ``` 
 will create a VirtualEnv in the project root with all the required packages, or 
 ```
-pip install -r requirements.txt
+pip install -r pip_requirements.txt
 ```
 can be used to install the dependencies in an existing VirtualEnv.
 

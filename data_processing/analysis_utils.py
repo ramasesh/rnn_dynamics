@@ -271,15 +271,17 @@ def fixed_points(cell,
                  embedding_size,
                  noise_scale=0.0,
                  learning_rate=0.01,
-                 decimation_factor=1):
+                 decimation_factor=1,
+                 input_lin=None):
 
   if isinstance(initial_states, list):
     initial_states = np.vstack(initial_states)
   initial_states = initial_states[::decimation_factor]
   initial_states += noise_scale * np.random.randn(*initial_states.shape)
 
-  input_lin = jnp.zeros((initial_states.shape[0], embedding_size))
-
+  if input_lin is None:
+    input_lin = jnp.zeros((initial_states.shape[0], embedding_size))
+    print(input_lin.shape)
   fp_loss_fn = renn.build_fixed_point_loss(cell, rnn_params)
   fixed_points, loss_hist, fp_losses = renn.find_fixed_points(fp_loss_fn,
                                                               initial_states,

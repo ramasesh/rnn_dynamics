@@ -5,7 +5,7 @@ ipython
 https://storage.googleapis.com/jax-releases/cuda100/jaxlib-0.1.51-cp37-none-manylinux2010_x86_64.whl
 jax
 tfds-nightly
-tensorflow==1.15.4
+tensorflow==2.5.3
 tensorflow-text
 tqdm
 renn
